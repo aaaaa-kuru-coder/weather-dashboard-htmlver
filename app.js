@@ -7,6 +7,8 @@ const CONFIG = {
   apiBase: "https://api.open-meteo.com/v1/forecast",
   pastDays: 2,
   forecastDays: 2,
+  cacheKey: "weatherDashboardCacheV3",
+  cacheMaxAgeMs: 3 * 60 * 60 * 1000,
 };
 
 const WEATHER_CODE_JA = {
@@ -32,9 +34,19 @@ const RAIN_COLOR_BINS = [
   { lower: 40, upper: Infinity, color: "#e31a1c", label: "40mm～" },
 ];
 
+const SERIES_LEGEND = [
+  { label: "一昨日 気温", color: "#f6c89f", style: "solid" },
+  { label: "昨日 気温", color: "#f28c28", style: "solid" },
+  { label: "今日 気温", color: "#d62728", style: "solid" },
+  { label: "今日 気温（予報）", color: "#d62728", style: "dashed" },
+  { label: "今日 降水確率", color: "#1f77b4", style: "solid" },
+  { label: "現在時刻", color: "#7f96aa", style: "current" },
+];
+
 let weatherChart = null;
 let latestRows = [];
 let latestFetchedAt = null;
+let currentTimeTimer = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -69,13 +81,16 @@ function getJstParts(now = new Date()) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    second: "2-digit",
+    hourCycle: "h23",
   }).formatToParts(now);
   const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
   return {
     dateKey: `${map.year}-${map.month}-${map.day}`,
     hour: Number(map.hour),
     minute: Number(map.minute),
+    second: Number(map.second),
+    decimalHour: Number(map.hour) + Number(map.minute) / 60 + Number(map.second) / 3600,
     mmdd: `${map.month}/${map.day}`,
     hhmm: `${map.hour}:${map.minute}`,
     display: `${map.year}年${map.month}月${map.day}日 ${map.hour}:${map.minute}`,
@@ -291,8 +306,14 @@ function buildDatasets(rows, nowJst) {
   }
 
   const thunderRows = [];
-  for (const row of today) if (row.precipitation_probability_percent >= 10 && row.has_thunder) thunderRows.push({ row, alpha: 1 });
-  if (showTomorrow) for (const row of tomorrow) if (row.precipitation_probability_percent >= 10 && row.has_thunder) thunderRows.push({ row, alpha: 0.7 });
+  for (const row of today) {
+    if (row.precipitation_probability_percent >= 10 && row.has_thunder) thunderRows.push({ row, alpha: 1 });
+  }
+  if (showTomorrow) {
+    for (const row of tomorrow) {
+      if (row.precipitation_probability_percent >= 10 && row.has_thunder) thunderRows.push({ row, alpha: 0.7 });
+    }
+  }
 
   return { datasets, annotations, thunderRows, showTomorrow };
 }
@@ -309,11 +330,27 @@ function hexToRgba(hex, alpha) {
 const overlayPlugin = {
   id: "weatherOverlay",
   afterDatasetsDraw(chart, args, pluginOptions) {
-    const { ctx, scales } = chart;
+    const { ctx, scales, chartArea } = chart;
     const annotations = pluginOptions.annotations ?? [];
     const thunderRows = pluginOptions.thunderRows ?? [];
 
     ctx.save();
+
+    // 現在時刻線。キャッシュ時刻ではなく「いま」のJSTで毎回描く。
+    const now = getJstParts(new Date());
+    if (now.decimalHour >= 0 && now.decimalHour <= 23 && chartArea) {
+      const xNow = scales.x.getPixelForValue(now.decimalHour);
+      ctx.save();
+      ctx.strokeStyle = "rgba(105, 130, 153, 0.68)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(xNow, chartArea.top);
+      ctx.lineTo(xNow, chartArea.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     for (const ann of annotations) {
       const x = scales.x.getPixelForValue(ann.row.hour);
@@ -370,8 +407,39 @@ function tooltipLabel(context) {
   return `${context.dataset.label}: ${Math.round(row.precipitation_probability_percent)}%`;
 }
 
+function renderSeriesLegend(showTomorrow) {
+  const parent = $("seriesLegend");
+  parent.innerHTML = "";
+
+  const items = [...SERIES_LEGEND];
+  if (showTomorrow) {
+    items.splice(items.length - 1, 0,
+      { label: "翌日 気温（0～18時）", color: "rgba(214, 39, 40, 0.58)", style: "dashed" },
+      { label: "翌日 降水確率（0～18時）", color: "rgba(31, 119, 180, 0.58)", style: "dotted" },
+    );
+  }
+
+  for (const item of items) {
+    const el = document.createElement("span");
+    el.className = "series-legend-item";
+
+    const swatch = document.createElement("span");
+    swatch.className = `series-line ${item.style}`;
+    swatch.style.setProperty("--line-color", item.color);
+
+    const text = document.createElement("span");
+    text.textContent = item.label;
+
+    el.appendChild(swatch);
+    el.appendChild(text);
+    parent.appendChild(el);
+  }
+}
+
 function renderChart(rows, fetchedAt) {
-  const nowJst = getJstParts(fetchedAt);
+  // 表示対象日は常に現在のJST。キャッシュ取得日時を基準にしない。
+  const nowJst = getJstParts(new Date());
+  const fetchedJst = getJstParts(fetchedAt);
   const { datasets, annotations, thunderRows, showTomorrow } = buildDatasets(rows, nowJst);
 
   if (weatherChart) weatherChart.destroy();
@@ -386,18 +454,10 @@ function renderChart(rows, fetchedAt) {
       parsing: false,
       animation: false,
       interaction: { mode: "nearest", intersect: false },
-      layout: { padding: { top: 44, right: 10, bottom: 4, left: 4 } },
+      layout: { padding: { top: 42, right: 6, bottom: 4, left: 2 } },
       plugins: {
         weatherOverlay: { annotations, thunderRows },
-        legend: {
-          position: "top",
-          align: "start",
-          labels: {
-            font: { size: 13 },
-            boxWidth: 34,
-            filter: (item, data) => !data.datasets[item.datasetIndex]._hideFromLegend,
-          },
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             title(items) {
@@ -429,24 +489,31 @@ function renderChart(rows, fetchedAt) {
         yTemp: {
           position: "left",
           grid: { color: "rgba(0,0,0,0.12)" },
-          ticks: { font: { size: 13 } },
-          title: { display: true, text: "気温（℃）", font: { size: 15 } },
+          ticks: { font: { size: 13 }, padding: 4 },
+          // 軸名はHTML側で上部表示し、横幅を節約する。
+          title: { display: false },
         },
         yPop: {
           position: "right",
           min: 0,
           max: 105,
           grid: { drawOnChartArea: false },
-          ticks: { stepSize: 20, font: { size: 13 }, callback: (v) => `${v}%` },
-          title: { display: true, text: "降水確率（%）", font: { size: 15 } },
+          ticks: { stepSize: 20, font: { size: 13 }, padding: 4, callback: (v) => `${v}%` },
+          title: { display: false },
         },
       },
     },
   });
 
+  renderSeriesLegend(showTomorrow);
   $("tomorrowNote").hidden = !showTomorrow;
-  $("chartUpdatedAt").textContent = `（${nowJst.mmdd} ${nowJst.hhmm} 更新）`;
-  $("updatedAt").textContent = `最終更新：${nowJst.display}`;
+  $("chartUpdatedAt").textContent = `（${fetchedJst.mmdd} ${fetchedJst.hhmm} 更新）`;
+  $("updatedAt").textContent = `最終データ取得：${fetchedJst.display}`;
+
+  if (currentTimeTimer) clearInterval(currentTimeTimer);
+  currentTimeTimer = setInterval(() => {
+    if (weatherChart) weatherChart.draw();
+  }, 60 * 1000);
 }
 
 function renderRainLegend() {
@@ -464,10 +531,53 @@ function renderRainLegend() {
   parent.appendChild(thunder);
 }
 
-async function fetchWeather() {
+function saveCache(rows, fetchedAt) {
+  try {
+    const payload = {
+      version: 3,
+      fetchedAt: fetchedAt.toISOString(),
+      rows,
+    };
+    localStorage.setItem(CONFIG.cacheKey, JSON.stringify(payload));
+  } catch (err) {
+    console.warn("キャッシュ保存に失敗しました。", err);
+  }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CONFIG.cacheKey);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (!payload || !Array.isArray(payload.rows) || !payload.fetchedAt) return null;
+    const fetchedAt = new Date(payload.fetchedAt);
+    if (Number.isNaN(fetchedAt.getTime())) return null;
+    return { rows: payload.rows, fetchedAt };
+  } catch (err) {
+    console.warn("キャッシュ読込に失敗しました。", err);
+    return null;
+  }
+}
+
+function cacheAgeMs(fetchedAt) {
+  return Math.max(0, Date.now() - fetchedAt.getTime());
+}
+
+function formatAge(ageMs) {
+  const minutes = Math.floor(ageMs / 60000);
+  if (minutes < 1) return "1分未満";
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return restMinutes ? `${hours}時間${restMinutes}分前` : `${hours}時間前`;
+}
+
+async function fetchWeather({ manual = false } = {}) {
   $("refreshButton").disabled = true;
   $("status").className = "status";
-  $("status").textContent = "Open-Meteoから最新データを取得しています...";
+  $("status").textContent = manual
+    ? "Open-Meteoから最新データを取得しています..."
+    : "保存済みデータが3時間以上前のため、最新データを取得しています...";
 
   try {
     const response = await fetch(buildApiUrl(), { cache: "no-store" });
@@ -475,16 +585,58 @@ async function fetchWeather() {
     const data = await response.json();
     latestRows = normalizeWeather(data);
     latestFetchedAt = new Date();
+    saveCache(latestRows, latestFetchedAt);
     renderChart(latestRows, latestFetchedAt);
     $("csvButton").disabled = false;
     $("status").className = "status ok";
-    $("status").textContent = "最新データを取得しました。";
+    $("status").textContent = "最新データを取得し、この端末に保存しました。";
   } catch (err) {
     console.error(err);
     $("status").className = "status error";
-    $("status").textContent = `取得に失敗しました：${err.message}`;
+    if (latestRows.length) {
+      $("status").textContent = `最新データの取得に失敗しました。保存済みデータを表示しています：${err.message}`;
+    } else {
+      $("status").textContent = `取得に失敗しました：${err.message}`;
+    }
   } finally {
     $("refreshButton").disabled = false;
+  }
+}
+
+function initializeData() {
+  const cached = loadCache();
+
+  if (!cached) {
+    $("status").className = "status";
+    $("status").textContent = "保存済みデータがないため、Open-Meteoから取得します...";
+    fetchWeather({ manual: false });
+    return;
+  }
+
+  latestRows = cached.rows;
+  latestFetchedAt = cached.fetchedAt;
+
+  try {
+    // まずキャッシュを即描画。古くてもAPI応答待ちで真っ白にしない。
+    renderChart(latestRows, latestFetchedAt);
+    $("csvButton").disabled = false;
+  } catch (err) {
+    console.warn("キャッシュの描画に失敗しました。再取得します。", err);
+    localStorage.removeItem(CONFIG.cacheKey);
+    latestRows = [];
+    latestFetchedAt = null;
+    fetchWeather({ manual: false });
+    return;
+  }
+
+  const age = cacheAgeMs(latestFetchedAt);
+  if (age < CONFIG.cacheMaxAgeMs) {
+    $("status").className = "status cached";
+    $("status").textContent = `保存済みデータを表示中（${formatAge(age)}に取得）。3時間以内のためAPI再取得はしていません。`;
+  } else {
+    $("status").className = "status cached";
+    $("status").textContent = `保存済みデータを先に表示中（${formatAge(age)}に取得）。裏で最新データへ更新します...`;
+    fetchWeather({ manual: false });
   }
 }
 
@@ -513,8 +665,8 @@ function downloadCsv() {
   URL.revokeObjectURL(url);
 }
 
-$("refreshButton").addEventListener("click", fetchWeather);
+$("refreshButton").addEventListener("click", () => fetchWeather({ manual: true }));
 $("csvButton").addEventListener("click", downloadCsv);
 
 renderRainLegend();
-fetchWeather();
+initializeData();

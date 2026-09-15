@@ -2,17 +2,23 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f7fa">
   <meta name="color-scheme" content="light">
   <title>天気ダッシュボード</title>
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="container">
     <header class="page-header">
-      <div>
-        <h1>🌤 天気ダッシュボード</h1>
-        <p id="updatedAt" class="updated-at">最終更新：取得中...</p>
+      <div class="brand">
+        <img class="brand-icon" src="assets/weather-icon-192.png" alt="" width="52" height="52">
+        <div>
+          <h1>天気ダッシュボード</h1>
+          <p id="updatedAt" class="updated-at">最終更新：読み込み中...</p>
+        </div>
       </div>
       <div class="controls">
         <button id="refreshButton" class="button primary" type="button">最新データを取得</button>
@@ -20,16 +26,29 @@
       </div>
     </header>
 
-    <div id="status" class="status" role="status" aria-live="polite">Open-Meteoからデータを取得しています...</div>
+    <div id="status" class="status" role="status" aria-live="polite">保存済みデータを確認しています...</div>
 
     <section class="card chart-card">
       <div class="chart-header">
         <h2>今日の天気予報</h2>
         <span id="chartUpdatedAt" class="chart-updated-at"></span>
       </div>
-      <div class="chart-wrap">
-        <canvas id="weatherChart" aria-label="天気予報グラフ"></canvas>
+
+      <div id="seriesLegend" class="series-legend" aria-label="グラフ系列の凡例"></div>
+
+      <div class="chart-scroll" aria-label="天気予報グラフ。スマートフォンでは横にスクロールできます。">
+        <div class="chart-stage">
+          <div class="axis-heading-row" aria-hidden="true">
+            <span class="axis-heading temp">気温（℃）</span>
+            <span class="axis-heading pop">降水確率（%）</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="weatherChart" aria-label="天気予報グラフ"></canvas>
+          </div>
+        </div>
       </div>
+
+      <div id="scrollHint" class="scroll-hint">↔ スマホではグラフを左右にスクロールできます</div>
       <div id="tomorrowNote" class="tomorrow-note" hidden>
         ※薄い点線は翌日0～18時を同じ時刻位置に重ねて表示
       </div>
@@ -43,11 +62,13 @@
     <details class="card details-card">
       <summary>表示仕様</summary>
       <ul>
-        <li>一昨日・昨日の気温、今日の気温、今日の降水確率を表示します。</li>
+        <li>一昨日・昨日・今日の気温、今日の降水確率を表示します。</li>
         <li>今日の気温は現在時刻まで実線、以後を点線で表示します。</li>
+        <li>現在時刻を青みがかった灰色の縦線で表示します。</li>
         <li>降水確率10%以上の時刻には、降水量に応じた色の四角マーカーを表示します。</li>
         <li>WMO天気コード95・96・99では雷マークを表示します。</li>
         <li>18時以降は翌日0～18時を同じ0～18時の位置へ重ねて表示します。</li>
+        <li>取得データは端末のブラウザに保存し、3時間以内なら再取得せず利用します。</li>
       </ul>
     </details>
   </main>
