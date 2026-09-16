@@ -7,7 +7,7 @@ const CONFIG = {
   apiBase: "https://api.open-meteo.com/v1/forecast",
   pastDays: 2,
   forecastDays: 2,
-  cacheKey: "weatherDashboardCacheV4",
+  cacheKey: "weatherDashboardCacheV4_2",
   cacheMaxAgeMs: 3 * 60 * 60 * 1000,
 };
 
@@ -194,7 +194,7 @@ function buildDatasets(rows, nowJst) {
       data: pointRows(dayBefore, "temperature_2m_c"),
       borderColor: "#f6c89f",
       backgroundColor: "#f6c89f",
-      borderWidth: 2.3,
+      borderWidth: 1.53,
       pointRadius: 0,
       tension: 0.2,
       order: 5,
@@ -205,7 +205,7 @@ function buildDatasets(rows, nowJst) {
       data: pointRows(yesterday, "temperature_2m_c"),
       borderColor: "#f28c28",
       backgroundColor: "#f28c28",
-      borderWidth: 2.7,
+      borderWidth: 1.80,
       pointRadius: 0,
       tension: 0.2,
       order: 5,
@@ -216,7 +216,7 @@ function buildDatasets(rows, nowJst) {
       data: pointRows(today, "temperature_2m_c", (r) => r.hour <= nowJst.hour),
       borderColor: "#d62728",
       backgroundColor: "#d62728",
-      borderWidth: 3.1,
+      borderWidth: 2.07,
       pointRadius: 0,
       tension: 0.2,
       order: 3,
@@ -227,7 +227,7 @@ function buildDatasets(rows, nowJst) {
       data: pointRows(today, "temperature_2m_c", (r) => r.hour >= nowJst.hour),
       borderColor: "#d62728",
       backgroundColor: "#d62728",
-      borderWidth: 3.1,
+      borderWidth: 2.07,
       borderDash: [9, 6],
       pointRadius: 0,
       tension: 0.2,
@@ -239,7 +239,7 @@ function buildDatasets(rows, nowJst) {
       data: pointRows(today, "precipitation_probability_percent"),
       borderColor: "#1f77b4",
       backgroundColor: "#1f77b4",
-      borderWidth: 2.7,
+      borderWidth: 1.80,
       pointRadius: 2.4,
       pointHoverRadius: 5,
       tension: 0.15,
@@ -251,8 +251,8 @@ function buildDatasets(rows, nowJst) {
       showLine: false,
       data: pointRows(today, "precipitation_probability_percent", (r) => r.precipitation_probability_percent >= 10),
       pointStyle: "rect",
-      pointRadius: 8.0,
-      pointHoverRadius: 9.5,
+      pointRadius: 5.33,
+      pointHoverRadius: 6.33,
       pointBorderWidth: 0.65,
       pointBorderColor: "#555555",
       pointBackgroundColor: (ctx) => getRainColor(ctx.raw?.row?.precipitation_mm),
@@ -269,7 +269,7 @@ function buildDatasets(rows, nowJst) {
         data: pointRows(tomorrow, "temperature_2m_c"),
         borderColor: "rgba(214, 39, 40, 0.58)",
         backgroundColor: "rgba(214, 39, 40, 0.58)",
-        borderWidth: 2.8,
+        borderWidth: 1.87,
         borderDash: [9, 6],
         pointRadius: 0,
         tension: 0.2,
@@ -281,7 +281,7 @@ function buildDatasets(rows, nowJst) {
         data: pointRows(tomorrow, "precipitation_probability_percent"),
         borderColor: "rgba(31, 119, 180, 0.58)",
         backgroundColor: "rgba(31, 119, 180, 0.58)",
-        borderWidth: 2.5,
+        borderWidth: 1.67,
         borderDash: [2, 5],
         pointRadius: 2.1,
         pointHoverRadius: 5,
@@ -294,8 +294,8 @@ function buildDatasets(rows, nowJst) {
         showLine: false,
         data: pointRows(tomorrow, "precipitation_probability_percent", (r) => r.precipitation_probability_percent >= 10),
         pointStyle: "rect",
-        pointRadius: 8.0,
-        pointHoverRadius: 9.5,
+        pointRadius: 5.33,
+        pointHoverRadius: 6.33,
         pointBorderWidth: 0.65,
         pointBorderColor: "rgba(85,85,85,0.65)",
         pointBackgroundColor: (ctx) => {
@@ -427,7 +427,7 @@ const overlayPlugin = {
       ctx.arc(x, y, compact ? 3.2 : 4.2, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.font = `bold ${compact ? 11 : 18}px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif`;
+      ctx.font = `bold ${compact ? 20 : 32}px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = ann.offsetY < 0 ? "bottom" : "top";
       ctx.fillText(ann.text, x, ty);
@@ -577,25 +577,39 @@ function renderChart(rows, fetchedAt) {
   fetchedAtLabelTimer = setInterval(updateFetchedAtLabel, 60 * 1000);
 }
 
+function appendRainLegendItem(parent, bin) {
+  const item = document.createElement("span");
+  item.className = "rain-legend-item";
+  item.innerHTML = `<span class="rain-swatch" style="background:${bin.color}"></span><span>${bin.label}</span>`;
+  parent.appendChild(item);
+}
+
 function renderRainLegend() {
-  const parent = $("rainLegend");
-  parent.innerHTML = "";
-  for (const bin of RAIN_COLOR_BINS) {
-    const item = document.createElement("span");
-    item.className = "rain-legend-item";
-    item.innerHTML = `<span class="rain-swatch" style="background:${bin.color}"></span><span>${bin.label}</span>`;
-    parent.appendChild(item);
+  const middle = $("rainLegendMiddle");
+  const right = $("rainLegendRight");
+  middle.innerHTML = "";
+  right.innerHTML = "";
+
+  // 中央列：～1mm ～ ～7mm
+  for (const bin of RAIN_COLOR_BINS.slice(0, 5)) {
+    appendRainLegendItem(middle, bin);
   }
+
+  // 右列：～10mm ～ 40mm～ ＋ 雷予報
+  for (const bin of RAIN_COLOR_BINS.slice(5)) {
+    appendRainLegendItem(right, bin);
+  }
+
   const thunder = document.createElement("span");
   thunder.className = "rain-legend-item";
   thunder.innerHTML = `<span class="thunder-swatch">↯</span><span>雷予報</span>`;
-  parent.appendChild(thunder);
+  right.appendChild(thunder);
 }
 
 function saveCache(rows, fetchedAt) {
   try {
     const payload = {
-      version: 4,
+      version: 4.2,
       fetchedAt: fetchedAt.toISOString(),
       rows,
     };

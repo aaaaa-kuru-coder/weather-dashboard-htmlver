@@ -48,13 +48,27 @@
       <div id="tomorrowNote" class="tomorrow-note" hidden>
         ※薄い点線は翌日0～18時を同じ時刻位置に重ねて表示
       </div>
-      <div id="seriesLegend" class="series-legend bottom-legend" aria-label="グラフ系列の凡例"></div>
     </section>
 
-    <section class="card legend-card" aria-label="降水量予報の凡例">
-      <h3>■ 降水量予報（mm/h）</h3>
-      <div id="rainLegend" class="rain-legend"></div>
-    </section>
+    <details class="card legend-details">
+      <summary>凡例</summary>
+      <div class="legend-grid" aria-label="グラフの凡例">
+        <section class="legend-column">
+          <h3>気温・降水確率</h3>
+          <div id="seriesLegend" class="series-legend stacked-legend"></div>
+        </section>
+
+        <section class="legend-column">
+          <h3>降水量（mm/h）</h3>
+          <div id="rainLegendMiddle" class="rain-legend stacked-legend"></div>
+        </section>
+
+        <section class="legend-column">
+          <h3>降水量・雷</h3>
+          <div id="rainLegendRight" class="rain-legend stacked-legend"></div>
+        </section>
+      </div>
+    </details>
 
     <details class="card details-card">
       <summary>表示仕様</summary>
