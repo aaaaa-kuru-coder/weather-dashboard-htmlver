@@ -17,7 +17,7 @@
         <img class="brand-icon" src="assets/weather-icon-192.png" alt="" width="52" height="52">
         <div>
           <h1>天気ダッシュボード</h1>
-          <p id="updatedAt" class="updated-at">最終更新：読み込み中...</p>
+          <p id="updatedAt" class="updated-at">最終データ取得：読み込み中...</p>
         </div>
       </div>
       <div class="controls">
@@ -26,17 +26,14 @@
       </div>
     </header>
 
-    <div id="status" class="status" role="status" aria-live="polite">保存済みデータを確認しています...</div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
 
     <section class="card chart-card">
       <div class="chart-header">
         <h2>今日の天気予報</h2>
-        <span id="chartUpdatedAt" class="chart-updated-at"></span>
       </div>
 
-      <div id="seriesLegend" class="series-legend" aria-label="グラフ系列の凡例"></div>
-
-      <div class="chart-scroll" aria-label="天気予報グラフ。スマートフォンでは横にスクロールできます。">
+      <div class="chart-scroll" aria-label="天気予報グラフ">
         <div class="chart-stage">
           <div class="axis-heading-row" aria-hidden="true">
             <span class="axis-heading temp">気温（℃）</span>
@@ -48,10 +45,10 @@
         </div>
       </div>
 
-      <div id="scrollHint" class="scroll-hint">↔ スマホではグラフを左右にスクロールできます</div>
       <div id="tomorrowNote" class="tomorrow-note" hidden>
         ※薄い点線は翌日0～18時を同じ時刻位置に重ねて表示
       </div>
+      <div id="seriesLegend" class="series-legend bottom-legend" aria-label="グラフ系列の凡例"></div>
     </section>
 
     <section class="card legend-card" aria-label="降水量予報の凡例">
@@ -65,10 +62,12 @@
         <li>一昨日・昨日・今日の気温、今日の降水確率を表示します。</li>
         <li>今日の気温は現在時刻まで実線、以後を点線で表示します。</li>
         <li>現在時刻を青みがかった灰色の縦線で表示します。</li>
+        <li>0時・12時・23時、および0℃・10℃・20℃・30℃の基準罫線を少し濃く表示します。</li>
         <li>降水確率10%以上の時刻には、降水量に応じた色の四角マーカーを表示します。</li>
         <li>WMO天気コード95・96・99では雷マークを表示します。</li>
         <li>18時以降は翌日0～18時を同じ0～18時の位置へ重ねて表示します。</li>
         <li>取得データは端末のブラウザに保存し、3時間以内なら再取得せず利用します。</li>
+        <li>スマートフォンでも24時間全体を横スクロールなしで表示します。</li>
       </ul>
     </details>
   </main>

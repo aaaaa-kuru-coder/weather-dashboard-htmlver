@@ -85,6 +85,7 @@ h1 {
 .status.error { color: #b91c1c; font-weight: 600; }
 .status.ok { color: #166534; }
 .status.cached { color: #35536f; }
+.status:empty { display: none; }
 
 .card {
   background: #fff;
@@ -110,21 +111,20 @@ h1 {
   font-size: 1.45rem;
 }
 
-.chart-updated-at {
-  color: #555;
-  font-size: 1rem;
-  white-space: nowrap;
-}
-
 .series-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px 16px;
   min-height: 32px;
-  margin: 0 2px 6px;
   color: #444;
   font-size: .9rem;
+}
+
+.bottom-legend {
+  margin: 10px 2px 0;
+  padding-top: 9px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .series-legend-item {
@@ -153,11 +153,7 @@ h1 {
 
 .chart-scroll {
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 
 .chart-stage {
@@ -184,13 +180,6 @@ h1 {
   aspect-ratio: var(--chart-aspect);
   min-height: 430px;
   max-height: 690px;
-}
-
-.scroll-hint {
-  display: none;
-  margin: 7px 0 0 4px;
-  color: #708090;
-  font-size: .82rem;
 }
 
 .tomorrow-note {
@@ -266,37 +255,35 @@ h1 {
   .chart-card { padding: 11px 8px 10px; }
   .chart-header { align-items: flex-start; flex-direction: column; gap: 2px; }
   .chart-header h2 { font-size: 1.22rem; }
-  .chart-updated-at { white-space: normal; font-size: .9rem; }
 
   .series-legend {
-    gap: 6px 12px;
-    font-size: .82rem;
-    margin-bottom: 5px;
+    gap: 6px 11px;
+    font-size: .78rem;
   }
-  .series-line { width: 28px; }
+  .series-line { width: 25px; }
 
-  /* 縦横比を崩さず、足りない横幅はスクロールで確保する */
+  /* 24時間を横スクロールなしで画面内に収める */
   .chart-stage {
-    width: 760px;
-    min-width: 760px;
+    width: 100%;
+    min-width: 0;
   }
 
   .chart-wrap {
-    width: 760px;
-    min-width: 760px;
-    height: 432px;
-    min-height: 432px;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
     max-height: none;
-    aspect-ratio: auto;
+    aspect-ratio: 1.58;
   }
 
   .axis-heading-row {
-    padding-right: 20px;
-    font-size: .9rem;
+    padding: 0 4px 2px 3px;
+    font-size: .78rem;
   }
 
-  .scroll-hint { display: block; }
-  .tomorrow-note { font-size: .86rem; }
+  .tomorrow-note { font-size: .82rem; }
+  .bottom-legend { margin-top: 8px; padding-top: 8px; }
 
   .legend-card { padding: 11px 12px 13px; }
   .rain-legend { gap: 7px 12px; }
@@ -308,4 +295,8 @@ h1 {
   .brand-icon { width: 42px; height: 42px; }
   h1 { font-size: 1.25rem; }
   .button { font-size: .86rem; }
+  .chart-wrap { aspect-ratio: 1.50; }
+  .axis-heading-row { font-size: .74rem; }
+  .series-legend { font-size: .74rem; gap: 5px 9px; }
 }
+

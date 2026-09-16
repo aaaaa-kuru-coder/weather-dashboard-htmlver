@@ -7,7 +7,7 @@ const CONFIG = {
   apiBase: "https://api.open-meteo.com/v1/forecast",
   pastDays: 2,
   forecastDays: 2,
-  cacheKey: "weatherDashboardCacheV3",
+  cacheKey: "weatherDashboardCacheV4",
   cacheMaxAgeMs: 3 * 60 * 60 * 1000,
 };
 
@@ -47,6 +47,7 @@ let weatherChart = null;
 let latestRows = [];
 let latestFetchedAt = null;
 let currentTimeTimer = null;
+let fetchedAtLabelTimer = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -95,6 +96,25 @@ function getJstParts(now = new Date()) {
     hhmm: `${map.hour}:${map.minute}`,
     display: `${map.year}年${map.month}月${map.day}日 ${map.hour}:${map.minute}`,
   };
+}
+
+function formatFetchedAtLabel(fetchedAt) {
+  const ageMs = Math.max(0, Date.now() - fetchedAt.getTime());
+  const minutes = Math.floor(ageMs / 60000);
+
+  if (ageMs < 3 * 60 * 1000) return "たった今";
+  if (ageMs < 60 * 60 * 1000) return `${minutes}分前`;
+
+  return getJstParts(fetchedAt).display;
+}
+
+function updateFetchedAtLabel() {
+  if (!latestFetchedAt) return;
+  $("updatedAt").textContent = `最終データ取得：${formatFetchedAtLabel(latestFetchedAt)}`;
+}
+
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 760px)").matches;
 }
 
 function buildApiUrl() {
@@ -329,10 +349,44 @@ function hexToRgba(hex, alpha) {
 
 const overlayPlugin = {
   id: "weatherOverlay",
+
+  beforeDatasetsDraw(chart) {
+    const { ctx, scales, chartArea } = chart;
+    if (!chartArea || !scales.x || !scales.yTemp) return;
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(70, 85, 105, 0.28)";
+    ctx.lineWidth = 1.35;
+    ctx.setLineDash([]);
+
+    // 0時・12時・23時の縦罫線を強調する。
+    for (const hour of [0, 12, 23]) {
+      const x = scales.x.getPixelForValue(hour);
+      if (x < chartArea.left - 1 || x > chartArea.right + 1) continue;
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.stroke();
+    }
+
+    // 0℃・10℃・20℃・30℃の横罫線を強調する。
+    for (const temp of [0, 10, 20, 30]) {
+      const y = scales.yTemp.getPixelForValue(temp);
+      if (y < chartArea.top - 1 || y > chartArea.bottom + 1) continue;
+      ctx.beginPath();
+      ctx.moveTo(chartArea.left, y);
+      ctx.lineTo(chartArea.right, y);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  },
+
   afterDatasetsDraw(chart, args, pluginOptions) {
     const { ctx, scales, chartArea } = chart;
     const annotations = pluginOptions.annotations ?? [];
     const thunderRows = pluginOptions.thunderRows ?? [];
+    const compact = pluginOptions.compact ?? false;
 
     ctx.save();
 
@@ -342,7 +396,7 @@ const overlayPlugin = {
       const xNow = scales.x.getPixelForValue(now.decimalHour);
       ctx.save();
       ctx.strokeStyle = "rgba(105, 130, 153, 0.68)";
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = compact ? 1.1 : 1.5;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.moveTo(xNow, chartArea.top);
@@ -356,23 +410,24 @@ const overlayPlugin = {
       const x = scales.x.getPixelForValue(ann.row.hour);
       const yValue = ann.axis === "yTemp" ? ann.row.temperature_2m_c : ann.row.precipitation_probability_percent;
       const y = scales[ann.axis].getPixelForValue(yValue);
-      const ty = y + ann.offsetY;
+      const offsetScale = compact ? 0.70 : 1;
+      const ty = y + ann.offsetY * offsetScale;
 
       ctx.strokeStyle = ann.color;
       ctx.globalAlpha = 0.65;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = compact ? 0.8 : 1;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.lineTo(x, ty + (ann.offsetY < 0 ? 8 : -8));
+      ctx.lineTo(x, ty + (ann.offsetY < 0 ? 7 : -7));
       ctx.stroke();
 
       ctx.globalAlpha = 1;
       ctx.fillStyle = ann.color;
       ctx.beginPath();
-      ctx.arc(x, y, 4.2, 0, Math.PI * 2);
+      ctx.arc(x, y, compact ? 3.2 : 4.2, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.font = "bold 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif";
+      ctx.font = `bold ${compact ? 11 : 18}px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = ann.offsetY < 0 ? "bottom" : "top";
       ctx.fillText(ann.text, x, ty);
@@ -384,10 +439,10 @@ const overlayPlugin = {
       const y = scales.yPop.getPixelForValue(row.precipitation_probability_percent);
       ctx.globalAlpha = item.alpha;
       ctx.fillStyle = "#7b2cbf";
-      ctx.font = "bold 22px 'DejaVu Sans', 'Segoe UI Symbol', sans-serif";
+      ctx.font = `bold ${compact ? 15 : 22}px 'DejaVu Sans', 'Segoe UI Symbol', sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText("↯", x, y - 11);
+      ctx.fillText("↯", x, y - (compact ? 7 : 11));
     }
 
     ctx.restore();
@@ -439,8 +494,8 @@ function renderSeriesLegend(showTomorrow) {
 function renderChart(rows, fetchedAt) {
   // 表示対象日は常に現在のJST。キャッシュ取得日時を基準にしない。
   const nowJst = getJstParts(new Date());
-  const fetchedJst = getJstParts(fetchedAt);
   const { datasets, annotations, thunderRows, showTomorrow } = buildDatasets(rows, nowJst);
+  const compact = isMobileLayout();
 
   if (weatherChart) weatherChart.destroy();
 
@@ -454,9 +509,11 @@ function renderChart(rows, fetchedAt) {
       parsing: false,
       animation: false,
       interaction: { mode: "nearest", intersect: false },
-      layout: { padding: { top: 42, right: 6, bottom: 4, left: 2 } },
+      layout: { padding: compact
+        ? { top: 26, right: 0, bottom: 2, left: 0 }
+        : { top: 42, right: 6, bottom: 4, left: 2 } },
       plugins: {
-        weatherOverlay: { annotations, thunderRows },
+        weatherOverlay: { annotations, thunderRows, compact },
         legend: { display: false },
         tooltip: {
           callbacks: {
@@ -481,15 +538,17 @@ function renderChart(rows, fetchedAt) {
           grid: { color: "rgba(0,0,0,0.10)" },
           ticks: {
             stepSize: 3,
-            font: { size: 13 },
+            font: { size: compact ? 9 : 13 },
+            maxRotation: 0,
+            minRotation: 0,
             callback: (v) => `${v}:00`,
           },
-          title: { display: true, text: "時刻", font: { size: 15 } },
+          title: { display: true, text: "時刻", font: { size: compact ? 11 : 15 } },
         },
         yTemp: {
           position: "left",
           grid: { color: "rgba(0,0,0,0.12)" },
-          ticks: { font: { size: 13 }, padding: 4 },
+          ticks: { font: { size: compact ? 9 : 13 }, padding: compact ? 2 : 4 },
           // 軸名はHTML側で上部表示し、横幅を節約する。
           title: { display: false },
         },
@@ -498,7 +557,7 @@ function renderChart(rows, fetchedAt) {
           min: 0,
           max: 105,
           grid: { drawOnChartArea: false },
-          ticks: { stepSize: 20, font: { size: 13 }, padding: 4, callback: (v) => `${v}%` },
+          ticks: { stepSize: 20, font: { size: compact ? 9 : 13 }, padding: compact ? 2 : 4, callback: (v) => `${v}%` },
           title: { display: false },
         },
       },
@@ -507,13 +566,15 @@ function renderChart(rows, fetchedAt) {
 
   renderSeriesLegend(showTomorrow);
   $("tomorrowNote").hidden = !showTomorrow;
-  $("chartUpdatedAt").textContent = `（${fetchedJst.mmdd} ${fetchedJst.hhmm} 更新）`;
-  $("updatedAt").textContent = `最終データ取得：${fetchedJst.display}`;
+  updateFetchedAtLabel();
 
   if (currentTimeTimer) clearInterval(currentTimeTimer);
   currentTimeTimer = setInterval(() => {
     if (weatherChart) weatherChart.draw();
   }, 60 * 1000);
+
+  if (fetchedAtLabelTimer) clearInterval(fetchedAtLabelTimer);
+  fetchedAtLabelTimer = setInterval(updateFetchedAtLabel, 60 * 1000);
 }
 
 function renderRainLegend() {
@@ -534,7 +595,7 @@ function renderRainLegend() {
 function saveCache(rows, fetchedAt) {
   try {
     const payload = {
-      version: 3,
+      version: 4,
       fetchedAt: fetchedAt.toISOString(),
       rows,
     };
@@ -563,15 +624,6 @@ function cacheAgeMs(fetchedAt) {
   return Math.max(0, Date.now() - fetchedAt.getTime());
 }
 
-function formatAge(ageMs) {
-  const minutes = Math.floor(ageMs / 60000);
-  if (minutes < 1) return "1分未満";
-  if (minutes < 60) return `${minutes}分前`;
-  const hours = Math.floor(minutes / 60);
-  const restMinutes = minutes % 60;
-  return restMinutes ? `${hours}時間${restMinutes}分前` : `${hours}時間前`;
-}
-
 async function fetchWeather({ manual = false } = {}) {
   $("refreshButton").disabled = true;
   $("status").className = "status";
@@ -588,8 +640,8 @@ async function fetchWeather({ manual = false } = {}) {
     saveCache(latestRows, latestFetchedAt);
     renderChart(latestRows, latestFetchedAt);
     $("csvButton").disabled = false;
-    $("status").className = "status ok";
-    $("status").textContent = "最新データを取得し、この端末に保存しました。";
+    $("status").className = "status";
+    $("status").textContent = "";
   } catch (err) {
     console.error(err);
     $("status").className = "status error";
@@ -631,11 +683,11 @@ function initializeData() {
 
   const age = cacheAgeMs(latestFetchedAt);
   if (age < CONFIG.cacheMaxAgeMs) {
-    $("status").className = "status cached";
-    $("status").textContent = `保存済みデータを表示中（${formatAge(age)}に取得）。3時間以内のためAPI再取得はしていません。`;
+    $("status").className = "status";
+    $("status").textContent = "";
   } else {
-    $("status").className = "status cached";
-    $("status").textContent = `保存済みデータを先に表示中（${formatAge(age)}に取得）。裏で最新データへ更新します...`;
+    $("status").className = "status";
+    $("status").textContent = "最新データを取得しています...";
     fetchWeather({ manual: false });
   }
 }
