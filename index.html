@@ -9,7 +9,6 @@
   <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
-  <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
   <main class="container">
@@ -38,7 +37,7 @@
         <div class="chart-stage">
           <div class="axis-heading-row" aria-hidden="true">
             <span class="axis-heading temp">気温（℃）</span>
-            <span class="axis-heading pop">降水確率（%）</span>
+            <span class="axis-heading pop">降水確率・湿度（%）</span>
           </div>
           <div class="chart-wrap">
             <canvas id="weatherChart" aria-label="天気予報グラフ"></canvas>
@@ -71,11 +70,37 @@
       </div>
     </details>
 
+
+    <details class="card pressure-details">
+      <summary>気圧配置・風向き</summary>
+      <div class="pressure-panel">
+        <div class="pressure-controls">
+          <button id="pressureButton" class="button secondary pressure-button" type="button">
+            気圧・風向きを取得
+          </button>
+          <span id="pressureStatus" class="pressure-status">
+            必要なときだけ取得します（通常の天気データとは別取得）。
+          </span>
+        </div>
+
+        <div id="pressureMapWrap" class="pressure-map-wrap" hidden>
+          <canvas id="pressureMapCanvas" aria-label="日本周辺の気圧配置と風向き"></canvas>
+        </div>
+
+        <p class="pressure-note">
+          等圧線は海面更正気圧、矢印は10m風です。矢印は風が吹いていく方向を示し、長いほど風速が強いことを表します。
+          海岸線は位置関係を把握するための簡易表示です。
+        </p>
+      </div>
+    </details>
+
     <details class="card details-card">
       <summary>表示仕様</summary>
       <ul>
-        <li>一昨日・昨日・今日の気温、今日の降水確率を表示します。</li>
+        <li>一昨日・昨日・今日の気温、今日の降水確率・湿度を表示します。</li>
         <li>今日の気温は現在時刻まで実線、以後を点線で表示します。</li>
+        <li>降水確率は細い青線に加え、未来部分だけ0%から予報値までを薄い青で塗りつぶします。過去部分は線のみです。</li>
+        <li>湿度は青緑色で表示し、予報部分を点線にします。</li>
         <li>現在時刻を青みがかった灰色の縦線で表示します。</li>
         <li>0時・12時・23時、および0℃・10℃・20℃・30℃の基準罫線を少し濃く表示します。</li>
         <li>降水確率10%以上の時刻には、降水量に応じた色の四角マーカーを表示します。</li>
@@ -83,6 +108,7 @@
         <li>18時以降は翌日0～18時を同じ0～18時の位置へ重ねて表示します。</li>
         <li>取得データは端末のブラウザに保存し、3時間以内なら再取得せず利用します。</li>
         <li>スマートフォンでも24時間全体を横スクロールなしで表示します。</li>
+        <li>気圧配置・風向きは通常データと分離し、「気圧・風向きを取得」を押したときだけ日本周辺の粗い格子データを取得します。</li>
       </ul>
     </details>
   </main>
