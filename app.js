@@ -878,7 +878,7 @@ function buildPressureApiUrl(points) {
     current: ["pressure_msl", "wind_speed_10m", "wind_direction_10m"].join(","),
     timezone: CONFIG.timezone,
     cell_selection: "nearest",
-    elevation: "nan",
+    //elevation: "nan",
   });
   return `${PRESSURE_MAP_CONFIG.apiBase}?${params.toString()}`;
 }
