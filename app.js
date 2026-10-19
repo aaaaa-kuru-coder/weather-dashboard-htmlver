@@ -912,8 +912,31 @@ async function fetchPressureWind() {
   const grid = buildPressureGridCoordinates();
 
   try {
-    const response = await fetch(buildPressureApiUrl(grid.points), { cache: "no-store" });
-    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
+    const response = await fetch(
+      buildPressureApiUrl(grid.points),
+      {
+        cache: "no-store",
+      }
+    );
+    
+    if (!response.ok) {
+      let reason = "";
+    
+      try {
+        const errorBody = await response.json();
+    
+        reason =
+          errorBody?.reason ??
+          JSON.stringify(errorBody);
+      } catch {
+        reason = await response.text();
+      }
+    
+      throw new Error(
+        `HTTP ${response.status}: ${reason}`
+      );
+    }
+    
     const raw = await response.json();
     const entries = Array.isArray(raw) ? raw : [raw];
 
