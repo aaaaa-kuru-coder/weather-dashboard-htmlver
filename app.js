@@ -907,7 +907,7 @@ function chunkArray(array,size){ // APIの分割取得をするための補助�
   const chunks = [];
 
   for(let i=0; i<array.length; i+=size){
-    chunk.push(array.slice(i,i+size));
+    chunks.push(array.slice(i,i+size));
   }
   return chunks;
 }
