@@ -1007,6 +1007,43 @@ async function fetchPressureWind() {
   }
 }
 
+// 2色の間を補完する処理
+function interpolateColor(c1,c2,t){
+  const r = Math.round( c1[0] + (c2[0]-c1[0]))*t );
+  const g = Math.round( c1[1] + (c2[1]-c1[1]))*t );
+  const b = Math.round( c1[2] + (c2[2]-c1[2]))*t );
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+// 気温をヒートマップに変換する処理
+function temperatureToColor(temperature, minTemp, maxTemp){
+  if(!Number.isFinite(temperature)){
+    return "rgba(0,0,0,0)";
+  }
+  const stops = [
+    [0.00,[40,80,200]],
+    [0.20, [70, 160, 230]],
+    [0.40, [100, 210, 190]],
+    [0.60, [245, 220, 80]],
+    [0.80, [245, 140, 50]],
+    [1.00, [210, 45, 45]],
+  ];
+
+  let t = (temperature - minTemp) / (maxTemp - minTemp);
+  t = Math.max( 0,Math.min(t,1) );
+  for (let i=0; i<stops.length-1; i++){
+    const [p0, c0] = stops[i];
+    const [p1, c1] = stops[i+1];
+    if(t>=p0 && t<=p1){
+      const localT = (t-p0)/(p1-p0);
+      return interpolateColor(c0,c1,localT);
+    }
+      
+  }
+  return "rgb(210,45,45)";
+}
+
+
 function renderPressureWindMap(payload) {
   const wrap = $("pressureMapWrap");
   const canvas = $("pressureMapCanvas");
