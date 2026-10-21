@@ -902,8 +902,8 @@ function loadPressureCache() {
     return null;
   }
 }
-// APIの分割取得をするための補助関数
-function chunkArray(array,size){
+
+function chunkArray(array,size){ // APIの分割取得をするための補助関数
   const chunks = [];
 
   for(let i=0; i<array.length; i+=size){
@@ -921,33 +921,45 @@ async function fetchPressureWind() {
   const grid = buildPressureGridCoordinates();
 
   try {
-    const response = await fetch(
-      buildPressureApiUrl(grid.points),
-      {
-        cache: "no-store",
-      }
-    );
+
+    //★ここから
+    const chunks = chunkArray(grid.points, 25);
+    const entries = [];
     
-    if (!response.ok) {
-      let reason = "";
-    
-      try {
-        const errorBody = await response.json();
-    
-        reason =
-          errorBody?.reason ??
-          JSON.stringify(errorBody);
-      } catch {
-        reason = await response.text();
-      }
-    
-      throw new Error(
-        `HTTP ${response.status}: ${reason}`
+    for(let i=0; i<chunks.length; i++){
+      const chunk = chunks[i];
+      status.textContent = `日本周辺の格子データを取得しています_` + `${i+1}/${chunks.length}`;
+      
+      const response = await fetch(
+        //buildPressureApiUrl(grid.points),
+        buildPressureApiUrl(chunk),
+        {cache: "no-store",}
       );
+      
+      if (!response.ok) {
+        let reason = "";
+      
+        try {
+          const errorBody = await response.json();
+          reason = errorBody?.reason ?? JSON.stringify(errorBody);
+        } catch {
+          reason = await response.text();
+        }
+      
+        throw new Error(`HTTP ${response.status}: ${reason}`);
+      }
+      
+      const raw = await response.json();
+
+      const chunkEntries = Array.isArray(raw) ? raw : [raw];
+      if(chunkEntries.length != chunk.length){
+        throw new Error("格子点数が一致しません" + `（期待 ${chunk.length /`+ `取得 ${chunkEntries.length}）`});
+      }
+      
+      //const entries = Array.isArray(raw) ? raw : [raw];
+      entries.push(...chunkEntries);
     }
-    
-    const raw = await response.json();
-    const entries = Array.isArray(raw) ? raw : [raw];
+    //★ここまで
 
     if (entries.length !== grid.points.length) {
       throw new Error(`格子点数が一致しません（期待 ${grid.points.length} / 取得 ${entries.length}）`);
