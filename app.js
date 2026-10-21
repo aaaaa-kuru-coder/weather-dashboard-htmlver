@@ -971,6 +971,7 @@ async function fetchPressureWind() {
       pressure: Number(entry.current?.pressure_msl),
       windSpeed: Number(entry.current?.wind_speed_10m),
       windDirection: Number(entry.current?.wind_direction_10m),
+      temperature: Number(entry.current?.temperature_2m),
       time: entry.current?.time ?? "",
     })).filter((p) =>
       Number.isFinite(p.pressure) &&
