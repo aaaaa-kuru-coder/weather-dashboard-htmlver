@@ -875,7 +875,7 @@ function buildPressureApiUrl(points) {
   const params = new URLSearchParams({
     latitude: points.map((p) => p.lat).join(","),
     longitude: points.map((p) => p.lon).join(","),
-    current: ["pressure_msl", "wind_speed_10m", "wind_direction_10m"].join(","),
+    current: ["temperature_2m","pressure_msl", "wind_speed_10m", "wind_direction_10m"].join(","),
     timezone: CONFIG.timezone,
     cell_selection: "nearest",
     //elevation: "nan",
