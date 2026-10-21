@@ -13,12 +13,12 @@ const CONFIG = {
 
 const PRESSURE_MAP_CONFIG = {
   apiBase: "https://api.open-meteo.com/v1/jma",
-  latitudeMin: 26,
-  latitudeMax: 46,
-  longitudeMin: 125,
-  longitudeMax: 150,
-  step: 2.5,
-  cacheKey: "weatherPressureMapCacheV4_3",
+  latitudeMin: 23.0,
+  latitudeMax: 49.0,
+  longitudeMin: 121.25,
+  longitudeMax: 153.75,
+  step: 1.25,
+  cacheKey: "weatherPressureMapCacheV4_4",
 };
 
 const WEATHER_CODE_JA = {
