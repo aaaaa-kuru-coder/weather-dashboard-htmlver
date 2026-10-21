@@ -1009,9 +1009,9 @@ async function fetchPressureWind() {
 
 // 2色の間を補完する処理
 function interpolateColor(c1,c2,t){
-  const r = Math.round( c1[0] + (c2[0]-c1[0]))*t );
-  const g = Math.round( c1[1] + (c2[1]-c1[1]))*t );
-  const b = Math.round( c1[2] + (c2[2]-c1[2]))*t );
+  const r = Math.round( c1[0] + (c2[0]-c1[0])*t );
+  const g = Math.round( c1[1] + (c2[1]-c1[1])*t );
+  const b = Math.round( c1[2] + (c2[2]-c1[2])*t );
   return `rgb(${r}, ${g}, ${b})`;
 }
 
