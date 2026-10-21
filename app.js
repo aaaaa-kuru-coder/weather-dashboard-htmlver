@@ -1040,7 +1040,21 @@ function temperatureToColor(temperature, minTemp, maxTemp){
     }
       
   }
+  if(temperature<=minTemp){
+    return "rgb(40,80,200)";
+  }
   return "rgb(210,45,45)";
+}
+
+//気温のヒートマップを描画する関数
+function drawTemperatureHeatmap(ctx, payload, xForLon, yForLat, bounds){
+  const temperatures = payload.points
+    .map((p) => p.temperature)
+    .filter(Nummber.isFinite);
+  if(!temperatures.length){
+    return;
+  }
+  const minTemp=
 }
 
 
