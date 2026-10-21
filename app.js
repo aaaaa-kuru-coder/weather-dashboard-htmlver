@@ -1054,7 +1054,8 @@ function drawTemperatureHeatmap(ctx, payload, xForLon, yForLat, bounds){
   if(!temperatures.length){
     return;
   }
-  const minTemp=
+  const minTemp=0;
+  return 0*0*0;
 }
 
 
