@@ -1054,8 +1054,46 @@ function drawTemperatureHeatmap(ctx, payload, xForLon, yForLat, bounds){
   if(!temperatures.length){
     return;
   }
-  const minTemp=0;
-  return 0*0*0;
+  const minTemp =0;
+  const maxTemp =35;
+  const lonStep = PRESSURE_MAP_CONFIG.step;
+  const latStep = PRESSURE_MAP_CONFIG.step;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(
+    bounds.left,
+    bounds.top,
+    bounds.right - bounds.left,
+    bounds.bottom - bounds.top
+  );
+  ctx.clip();
+
+  for (const p of payload.points) {
+
+    if (!Number.isFinite(p.temperature)) {
+      continue;
+    }
+
+    const lon0 = p.lon - lonStep / 2;
+    const lon1 = p.lon + lonStep / 2;
+    const lat0 = p.lat - latStep / 2;
+    const lat1 = p.lat + latStep / 2;
+    const x0 = xForLon(lon0);
+    const x1 = xForLon(lon1);
+    const y0 = yForLat(lat0);
+    const y1 = yForLat(lat1);
+    const x = Math.min(x0, x1);
+    const y = Math.min(y0, y1);
+    const width = Math.abs(x1 - x0);
+    const height = Math.abs(y1 - y0);
+    ctx.fillStyle = temperatureToColor(p.temperature,minTemp,maxTemp);
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(x,y,width,height);
+  }
+
+  ctx.restore();
+  return { minTemp,maxTemp };
 }
 
 
@@ -1095,7 +1133,11 @@ function renderPressureWindMap(payload) {
   ctx.fillRect(0, 0, cssWidth, cssHeight);
   ctx.fillStyle = "#f8fbfd";
   ctx.fillRect(left, top, right - left, bottom - top);
-
+  
+  // 気温マップ
+  const heatmapRange = drawTemperatureHeatmap(ctx, payload, xForLon, yForLat,
+    { left,right,top,bottom} );
+  
   // 緯度経度グリッド
   ctx.strokeStyle = "rgba(90,120,145,0.14)";
   ctx.lineWidth = 1;
