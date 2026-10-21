@@ -1050,7 +1050,7 @@ function temperatureToColor(temperature, minTemp, maxTemp){
 function drawTemperatureHeatmap(ctx, payload, xForLon, yForLat, bounds){
   const temperatures = payload.points
     .map((p) => p.temperature)
-    .filter(Nummber.isFinite);
+    .filter(Number.isFinite);
   if(!temperatures.length){
     return;
   }
