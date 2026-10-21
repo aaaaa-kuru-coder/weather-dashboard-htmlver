@@ -953,7 +953,7 @@ async function fetchPressureWind() {
 
       const chunkEntries = Array.isArray(raw) ? raw : [raw];
       if(chunkEntries.length != chunk.length){
-        throw new Error("格子点数が一致しません" + `（期待 ${chunk.length} /`+ `取得 ${chunkEntries.length}）`});
+        throw new Error("格子点数が一致しません" + `（期待 ${chunk.length} /`+ `取得 ${chunkEntries.length}）`);
       }
       
       //const entries = Array.isArray(raw) ? raw : [raw];
