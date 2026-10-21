@@ -902,6 +902,15 @@ function loadPressureCache() {
     return null;
   }
 }
+// APIの分割取得をするための補助関数
+function chunkArray(array,size){
+  const chunks = [];
+
+  for(let i=0; i<array.length; i+=size){
+    chunk.push(array.slice(i,i+size));
+  }
+  return chunks;
+}
 
 async function fetchPressureWind() {
   const button = $("pressureButton");
