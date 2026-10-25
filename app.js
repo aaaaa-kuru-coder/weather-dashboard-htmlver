@@ -1096,6 +1096,48 @@ function drawTemperatureHeatmap(ctx, payload, xForLon, yForLat, bounds){
   return { minTemp,maxTemp };
 }
 
+// 風の矢印の色を返す関数
+function windStyle(speed) {
+  if (!Number.isFinite(speed)) {
+    return {color: [120, 140, 160],alpha: 0.15,};
+  }
+  if (speed < 2) {
+    return {color: [120, 200, 240], alpha: 0.30,};//薄い青
+  }
+  if (speed < 4) {
+    return {
+      color: [185, 160, 235],   // 薄い紫
+      alpha: 0.42,
+    };
+  }
+
+  if (speed < 8) {
+    return {
+      color: [135, 80, 200],    // 紫
+      alpha: 0.58,
+    };
+  }
+
+  if (speed < 17) {
+    return {
+      color: [190, 45, 140],    // 赤紫
+      alpha: 0.72,
+    };
+  }
+
+  if (speed < 33) {
+    return {
+      color: [245, 70, 145],    // ピンク
+      alpha: 0.86,
+    };
+  }
+
+  return {
+    color: [180, 0, 90],        // 濃いピンク
+    alpha: 1.0,
+  };
+}
+
 
 function renderPressureWindMap(payload) {
   const wrap = $("pressureMapWrap");
@@ -1265,8 +1307,13 @@ function renderPressureWindMap(payload) {
     const x2 = x + dx;
     const y2 = y + dy;
 
-    ctx.strokeStyle = "rgba(32,104,122,0.76)";
-    ctx.fillStyle = "rgba(32,104,122,0.82)";
+    // ctx.strokeStyle = "rgba(32,104,122,0.76)";
+    // ctx.fillStyle = "rgba(32,104,122,0.82)";
+    const style = windStyle(p.windSpeed);
+    const [r, g, b] = style.color;
+    ctx.strokeStyle = `rgba(${r},${g},${b},${style.alpha})`;
+    ctx.fillStyle = `rgba(${r},${g},${b},${style.alpha})`;
+    
     ctx.lineWidth = 1.15;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
 
