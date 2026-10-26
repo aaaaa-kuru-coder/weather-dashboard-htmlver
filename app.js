@@ -1177,7 +1177,20 @@ function windStyle(speed) {
   };
 }
 
+//気圧や風向きのバージョンを切り替える際の関数
+function showPressureVersion(version){
+  const payload = loadPressureCache(version);
+  if(!payload){// 何も得られなければ、何も起こさない
+    return;
+  }
+  renderPressureWindMap(payload);
+  // 冒頭テキストの表示も変更
+  $("pressureStatus").textContent =
+    version ==="curent" ? ("最新取得版：" + payload.dataTime) : ("前回取得版：" + payload.dataTime);
+  
+}
 
+// 気圧や風向きを描画する処理
 function renderPressureWindMap(payload) {
   const wrap = $("pressureMapWrap");
   const canvas = $("pressureMapCanvas");
@@ -1374,11 +1387,17 @@ function renderPressureWindMap(payload) {
   ctx.fillText(`等圧線：4 hPa間隔（${firstLevel}～${lastLevel} hPa）`, left + 6, top + 5);
 }
 
+//各ボタンを押したときの挙動を記載
 $("pressureButton").addEventListener("click", fetchPressureWind);
-
 
 $("refreshButton").addEventListener("click", () => fetchWeather({ manual: true }));
 $("csvButton").addEventListener("click", downloadCsv);
 
+$("pressurePreviousButton").addEventListener("click",
+                                            () => {showPressureVersion("previous");} );
+$("pressureCurrentButton").addEventListener("click",
+                                            () => {showPressureVersion("current");} );
+
+//初期から起こす処理を記載
 renderRainLegend();
 initializeData();
