@@ -55,6 +55,11 @@ const SERIES_LEGEND = [
   { label: "現在時刻", color: "#7f96aa", style: "current" },
 ];
 
+const PRESSURE_CACHE_KEYS = {
+  current:"weatherPressureCurrent",
+  previous:"weatherPressurePrevious",
+};
+
 let weatherChart = null;
 let latestRows = [];
 let latestFetchedAt = null;
@@ -883,21 +888,48 @@ function buildPressureApiUrl(points) {
   return `${PRESSURE_MAP_CONFIG.apiBase}?${params.toString()}`;
 }
 
+// function savePressureCache(payload) {
+//   try {
+//     localStorage.setItem(PRESSURE_MAP_CONFIG.cacheKey, JSON.stringify(payload));
+//   } catch (err) {
+//     console.warn("気圧配置キャッシュの保存に失敗しました。", err);
+//   }
+// }
 function savePressureCache(payload) {
   try {
-    localStorage.setItem(PRESSURE_MAP_CONFIG.cacheKey, JSON.stringify(payload));
+    const currentRaw = localStorage.getItem(PRESSURE_CACHE_KEYS.current);
+    if (currentRaw){
+      localStorage.setItem(PRESSURE_CACHE_KEYS.previous, currentRaw);
+    };
+    //localStorage.setItem(PRESSURE_MAP_CONFIG.cacheKey, JSON.stringify(payload));
+    localStorage.setItem(PRESSURE_CACHE_KEYS.current, JSON.stringify(payload));
+    
   } catch (err) {
     console.warn("気圧配置キャッシュの保存に失敗しました。", err);
   }
 }
 
-function loadPressureCache() {
+// function loadPressureCache() {
+//   try {
+//     const raw = localStorage.getItem(PRESSURE_MAP_CONFIG.cacheKey);
+//     if (!raw) return null;
+//     const payload = JSON.parse(raw);
+//     if (!payload || !Array.isArray(payload.points)) return null;
+//     return payload;
+//   } catch {
+//     return null;
+//   }
+// }
+function loadPressureCache(version="current") {
   try {
-    const raw = localStorage.getItem(PRESSURE_MAP_CONFIG.cacheKey);
+    const key = PRESSURE_CACHE_KEYS[version];
+    const raw = localStorage.getItem(key);
+    
     if (!raw) return null;
-    const payload = JSON.parse(raw);
-    if (!payload || !Array.isArray(payload.points)) return null;
-    return payload;
+    // const payload = JSON.parse(raw);
+    // if (!payload || !Array.isArray(payload.points)) return null;
+    // return payload;
+    return JSON.parse(raw);
   } catch {
     return null;
   }
