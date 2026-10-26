@@ -75,12 +75,13 @@
       <summary>気圧配置・風向き</summary>
       <div class="pressure-panel">
         <div class="pressure-controls">
-          <button id="pressureButton" class="button secondary pressure-button" type="button">
-            気圧・風向きを取得
-          </button>
-          <span id="pressureStatus" class="pressure-status">
-            必要なときだけ取得します（通常の天気データとは別取得）。
-          </span>
+          <button id="pressureButton" class="button secondary pressure-button" type="button">気圧・風向きを取得</button>
+          <span id="pressureStatus" class="pressure-status">必要なときだけ取得します（通常の天気データとは別取得）。</span>
+        </div>
+
+        <div class="pressure-version-switch">
+          <button id="pressurePreviousButton" type="button">前回描画</button>
+          <button id="pressureCurrentButton" type="button">最新描画</button>
         </div>
 
         <div id="pressureMapWrap" class="pressure-map-wrap" hidden>
