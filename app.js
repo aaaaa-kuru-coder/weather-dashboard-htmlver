@@ -780,7 +780,7 @@ function initializeData() {
 
   latestRows = cached.rows;
   latestFetchedAt = cached.fetchedAt;
-
+  
   try {
     // まずキャッシュを即描画。古くてもAPI応答待ちで真っ白にしない。
     renderChart(latestRows, latestFetchedAt);
@@ -803,6 +803,13 @@ function initializeData() {
     $("status").textContent = "最新データを取得しています...";
     fetchWeather({ manual: false });
   }
+
+
+  const cached_pressure = loadPressureCache("current");
+  if (cached_pressure){
+    {renderPressureWindMap(cached_pressure)};
+  }
+  
 }
 
 function escapeCsv(value) {
