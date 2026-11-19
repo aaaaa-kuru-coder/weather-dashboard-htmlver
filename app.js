@@ -768,49 +768,85 @@ async function fetchWeather({ manual = false } = {}) {
   }
 }
 
-function initializeData() {
+async function initializeData() {
   const cached = loadCache();
+  let needsWeatherRefresh = true;
 
-  if (!cached) {
-    $("status").className = "status";
-    $("status").textContent = "保存済みデータがないため、Open-Meteoから取得します...";
-    fetchWeather({ manual: false });
-    return;
+  // 気温グラフのキャッシュを優先して描画
+  if (cached) {
+    latestRows = cached.rows;
+    latestFetchedAt = cached.fetchedAt;
+
+    try {
+      renderChart(latestRows, latestFetchedAt);
+      $("csvButton").disabled = false;
+
+      needsWeatherRefresh =
+        cacheAgeMs(latestFetchedAt) >= CONFIG.cacheMaxAgeMs;
+
+      $("status").className = "status";
+      $("status").textContent = "";
+
+    } catch (err) {
+      console.warn("キャッシュの描画に失敗しました。", err);
+      localStorage.removeItem(CONFIG.cacheKey);
+
+      latestRows = [];
+      latestFetchedAt = null;
+    }
   }
 
-  latestRows = cached.rows;
-  latestFetchedAt = cached.fetchedAt;
-  
-  try {
-    // まずキャッシュを即描画。古くてもAPI応答待ちで真っ白にしない。
-    renderChart(latestRows, latestFetchedAt);
-    $("csvButton").disabled = false;
-  } catch (err) {
-    console.warn("キャッシュの描画に失敗しました。再取得します。", err);
-    localStorage.removeItem(CONFIG.cacheKey);
-    latestRows = [];
-    latestFetchedAt = null;
-    fetchWeather({ manual: false });
-    return;
+  // 必要なら気温データを先に取得
+  if (needsWeatherRefresh) {
+    await fetchWeather({ manual: false });
   }
 
-  const age = cacheAgeMs(latestFetchedAt);
-  if (age < CONFIG.cacheMaxAgeMs) {
-    $("status").className = "status";
-    $("status").textContent = "";
-  } else {
-    $("status").className = "status";
-    $("status").textContent = "最新データを取得しています...";
-    fetchWeather({ manual: false });
-  }
+  // 気温グラフの描画をブラウザに先に反映させる
+  await new Promise(resolve =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(resolve)
+    )
+  );
 
-
-  const cached_pressure = loadPressureCache("current");
-  if (cached_pressure){
-    {renderPressureWindMap(cached_pressure)};
-  }
-  
+  // 気圧配置の初期化
+  initializePressureData();
 }
+
+function initializePressureData() {
+  const cached = loadPressureCache("current");
+
+  // キャッシュなしなら新規取得
+  let needsRefresh = true;
+
+  if (cached) {
+    try {
+      // 古くても、まず保存済みの図を表示
+      renderPressureWindMap(cached);
+
+      $("pressureStatus").textContent =
+        `表示時点：${cached.dataTime.replace("T", " ")}（JST）`;
+
+      // 前回取得からの経過時間を計算
+      const fetchedAt = new Date(cached.fetchedAt);
+      const age = cacheAgeMs(fetchedAt);
+
+      needsRefresh =
+        !Number.isFinite(age) ||
+        age >= PRESSURE_MAP_CONFIG.cacheMaxAgeMs;
+
+    } catch (err) {
+      console.warn("気圧キャッシュの描画に失敗しました。", err);
+    }
+  }
+
+  // 古い場合・キャッシュがない場合のみ取得
+  if (needsRefresh) {
+    fetchPressureWind();
+  }
+}
+
+
+
 
 function escapeCsv(value) {
   const s = String(value ?? "");
