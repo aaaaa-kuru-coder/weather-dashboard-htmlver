@@ -55,12 +55,14 @@
       <div class="pressure-panel">
         <div class="pressure-controls">
           <button id="pressureButton" class="button secondary pressure-button" type="button">気圧・風向きを取得</button>
-          <span id="pressureStatus" class="pressure-status">必要なときだけ取得します（通常の天気データとは別取得）。</span>
+          <span id="pressureStatus" class="pressure-status">
+            保存済みデータを確認しています...
+          </span>
         </div>
 
         <div class="pressure-version-switch">
-          <button id="pressurePreviousButton" type="button">前回描画</button>
-          <button id="pressureCurrentButton" type="button">最新描画</button>
+          <button id="pressurePreviousButton" class="button secondary" type="button">前回描画</button>
+          <button id="pressureCurrentButton" class="button secondary" type="button">最新描画</button>
         </div>
 
         <div id="pressureMapWrap" class="pressure-map-wrap" hidden>
@@ -111,7 +113,12 @@
         <li>18時以降は翌日0～18時を同じ0～18時の位置へ重ねて表示します。</li>
         <li>取得データは端末のブラウザに保存し、3時間以内なら再取得せず利用します。</li>
         <li>スマートフォンでも24時間全体を横スクロールなしで表示します。</li>
-        <li>気圧配置・風向きは通常データと分離し、「気圧・風向きを取得」を押したときだけ日本周辺の粗い格子データを取得します。</li>
+        <li>
+          気圧配置・風向きは通常データと分離し、
+          前回取得から6時間以上経過している場合、
+          ページ読み込み時に自動で取得します。
+          手動取得も可能です。
+        </li>
       </ul>
     </details>
   </main>
