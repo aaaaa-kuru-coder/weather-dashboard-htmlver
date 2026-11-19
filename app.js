@@ -822,6 +822,7 @@ function initializePressureData() {
     try {
       // 古くても、まず保存済みの図を表示
       renderPressureWindMap(cached);
+      setPressureVersionActive("current");
 
       $("pressureStatus").textContent =
         `表示時点：${cached.dataTime.replace("T", " ")}（JST）`;
@@ -1067,12 +1068,14 @@ async function fetchPressureWind() {
     };
     savePressureCache(payload);
     renderPressureWindMap(payload);
+    setPressureVersionActive("current");
     status.textContent = `表示時点：${payload.dataTime.replace("T", " ")}（JST）`;
   } catch (err) {
     console.error(err);
     const cached = loadPressureCache();
     if (cached) {
       renderPressureWindMap(cached);
+      setPressureVersionActive("current");
       status.textContent = `最新取得に失敗したため保存データを表示：${err.message}`;
     } else {
       status.textContent = `取得に失敗しました：${err.message}`;
@@ -1213,17 +1216,34 @@ function windStyle(speed) {
   };
 }
 
+
+
+function setPressureVersionActive(version) {
+  $("pressurePreviousButton").classList.toggle(
+    "is-active", version === "previous"
+  );
+
+  $("pressureCurrentButton").classList.toggle(
+    "is-active", version === "current"
+  );
+}
+
 //気圧や風向きのバージョンを切り替える際の関数
-function showPressureVersion(version){
+function showPressureVersion(version) {
   const payload = loadPressureCache(version);
-  if(!payload){// 何も得られなければ、何も起こさない
-    return;
-  }
+
+  if (!payload) return;
+
   renderPressureWindMap(payload);
-  // 冒頭テキストの表示も変更
+
+  setPressureVersionActive(version);
+
   $("pressureStatus").textContent =
-    version ==="curent" ? ("最新取得版：" + payload.dataTime) : ("前回取得版：" + payload.dataTime);
-  
+    (version === "current"
+      ? "最新取得版："
+      : "前回取得版：")
+    + payload.dataTime.replace("T", " ")
+    + "（JST）";
 }
 
 // 気圧や風向きを描画する処理
