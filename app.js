@@ -1246,6 +1246,102 @@ function showPressureVersion(version) {
     + "（JST）";
 }
 
+
+
+// 等圧線描画用の高密度メッシュを作成する
+function interpolatePressureGrid(payload, factor = 4) {
+
+  const srcLats = payload.lats;
+  const srcLons = payload.lons;
+
+  // 元データの参照用Map
+  const srcMap = new Map(
+    payload.points.map(p => [
+      `${p.lat}|${p.lon}`, p.pressure
+    ])
+  );
+
+  // 格子を指定倍率で細分化する
+  function refineAxis(axis) {
+    const result = [];
+
+    for (let i = 0; i < axis.length - 1; i++) {
+      for (let k = 0; k < factor; k++) {
+        const t = k / factor;
+
+        result.push(
+          axis[i] + (axis[i + 1] - axis[i]) * t
+        );
+      }
+    }
+
+    result.push(axis[axis.length - 1]);
+    return result;
+  }
+
+  const lats = refineAxis(srcLats);
+  const lons = refineAxis(srcLons);
+
+  const points = [];
+
+  for (let i = 0; i < lats.length; i++) {
+    for (let j = 0; j < lons.length; j++) {
+
+      // 元の格子におけるセルの位置
+      const iy = Math.min(
+        Math.floor(i / factor),
+        srcLats.length - 2
+      );
+
+      const ix = Math.min(
+        Math.floor(j / factor),
+        srcLons.length - 2
+      );
+
+      const v = i / factor - iy;
+      const u = j / factor - ix;
+
+      // 周辺4格子点の気圧
+      const q00 = srcMap.get(
+        `${srcLats[iy]}|${srcLons[ix]}`
+      );
+
+      const q10 = srcMap.get(
+        `${srcLats[iy]}|${srcLons[ix + 1]}`
+      );
+
+      const q01 = srcMap.get(
+        `${srcLats[iy + 1]}|${srcLons[ix]}`
+      );
+
+      const q11 = srcMap.get(
+        `${srcLats[iy + 1]}|${srcLons[ix + 1]}`
+      );
+
+      // 欠損データがあるセルは描画しない
+      if (![q00, q10, q01, q11]
+            .every(Number.isFinite)) {
+        continue;
+      }
+
+      // 双線形補間
+      const pressure =
+          (1 - u) * (1 - v) * q00
+        + u       * (1 - v) * q10
+        + (1 - u) * v       * q01
+        + u       * v       * q11;
+
+      points.push({
+        lat: lats[i],
+        lon: lons[j],
+        pressure: pressure
+      });
+    }
+  }
+
+  return { lats, lons, points };
+}
+
 // 気圧や風向きを描画する処理
 function renderPressureWindMap(payload) {
   const wrap = $("pressureMapWrap");
@@ -1325,9 +1421,24 @@ function renderPressureWindMap(payload) {
   }
 
   // 格子値テーブル
-  const valueMap = new Map(payload.points.map((p) => [`${p.lat}|${p.lon}`, p]));
-  const lats = payload.lats;
-  const lons = payload.lons;
+  //const valueMap = new Map(payload.points.map((p) => [`${p.lat}|${p.lon}`, p]));
+  //const lats = payload.lats;
+  //const lons = payload.lons;
+  // ★等圧線描画用に気圧データを補間
+  const pressureGrid = interpolatePressureGrid(
+    payload,
+    PRESSURE_MAP_CONFIG.interpolationFactor
+  );
+  
+  // 補間後の格子値テーブル
+  const valueMap = new Map(
+    pressureGrid.points.map(p => [
+      `${p.lat}|${p.lon}`, p
+    ])
+  );
+  
+  const lats = pressureGrid.lats;
+  const lons = pressureGrid.lons;
   const pressures = payload.points.map((p) => p.pressure).filter(Number.isFinite);
   const pMin = Math.min(...pressures);
   const pMax = Math.max(...pressures);
