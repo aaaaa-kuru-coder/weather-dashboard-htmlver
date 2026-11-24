@@ -227,7 +227,10 @@ function initializeCitySelector() {
 
   select.value =
     selectedCity.id;
+  updateSelectedCityUi();
 }
+
+
 async function changeCity(cityId) {
   const city = getCityById(cityId);
 
@@ -268,7 +271,17 @@ async function changeCity(cityId) {
   await initializeWeatherForSelectedCity();
 }
 
+function updateSelectedCityUi() {
+  const title =
+    $("weatherTitle");
 
+  if (!title || !selectedCity) {
+    return;
+  }
+
+  title.textContent =
+    `${selectedCity.name}の今日の天気予報`;
+}
 
 
 function buildApiUrl() {
