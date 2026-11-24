@@ -243,6 +243,7 @@ async function changeCity(cityId) {
 
   // ① 現在選択中の都市を更新
   selectedCity = city;
+  updateSelectedCityUi();
 
   // ② 選択状態をブラウザに保存
   saveSelectedCityId(city.id);
