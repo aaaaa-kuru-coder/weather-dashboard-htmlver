@@ -11,6 +11,7 @@ const CONFIG = {
 
   cacheKeyPrefix: "weatherDashboardCacheV5",
   cacheMaxAgeMs: 3 * 60 * 60 * 1000,
+  
 };
 
 const PRESSURE_MAP_CONFIG = {
@@ -21,6 +22,7 @@ const PRESSURE_MAP_CONFIG = {
   longitudeMax: 153.75,
   step: 1.25,
   cacheKey: "weatherPressureMapCacheV4_4",
+  cacheMaxAgeMs: 6 * 60 * 60 * 1000,
 };
 
 const WEATHER_CODE_JA = {
