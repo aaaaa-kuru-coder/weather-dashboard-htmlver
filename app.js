@@ -1,13 +1,15 @@
 "use strict";
 
+
+let selectedCity = null;
+
 const CONFIG = {
-  latitude: 35.68,
-  longitude: 139.77,
   timezone: "Asia/Tokyo",
   apiBase: "https://api.open-meteo.com/v1/forecast",
   pastDays: 2,
   forecastDays: 2,
-  cacheKey: "weatherDashboardCacheV4_3",
+
+  cacheKeyPrefix: "weatherDashboardCacheV5",
   cacheMaxAgeMs: 3 * 60 * 60 * 1000,
 };
 
@@ -134,10 +136,149 @@ function isMobileLayout() {
   return window.matchMedia("(max-width: 760px)").matches;
 }
 
+
+
+
+
+
+
+
+
+
+
+function getCityById(cityId) {
+  return (
+    WEATHER_APP_CONFIG.cities.find(
+      (city) => city.id === cityId
+    ) ?? null
+  );
+}
+
+function loadSelectedCityId() {
+  try {
+    const cityId =
+      localStorage.getItem(
+        WEATHER_APP_CONFIG.selectedCityStorageKey
+      );
+
+    if (
+      cityId &&
+      getCityById(cityId)
+    ) {
+      return cityId;
+    }
+  } catch (err) {
+    console.warn(
+      "選択都市の読込に失敗しました。",
+      err
+    );
+  }
+
+  return WEATHER_APP_CONFIG.defaultCityId;
+}
+
+function saveSelectedCityId(cityId) {
+  try {
+    localStorage.setItem(
+      WEATHER_APP_CONFIG.selectedCityStorageKey,
+      cityId
+    );
+  } catch (err) {
+    console.warn(
+      "選択都市の保存に失敗しました。",
+      err
+    );
+  }
+}
+
+function initializeCitySelector() {
+  const select =
+    $("citySelect");
+
+  select.innerHTML = "";
+
+  for (
+    const city
+    of WEATHER_APP_CONFIG.cities
+  ) {
+    const option =
+      document.createElement(
+        "option"
+      );
+
+    option.value =
+      city.id;
+
+    option.textContent =
+      city.name;
+
+    select.appendChild(option);
+  }
+
+  const savedCityId =
+    loadSelectedCityId();
+
+  selectedCity =
+    getCityById(
+      savedCityId
+    );
+
+  select.value =
+    selectedCity.id;
+}
+async function changeCity(cityId) {
+  const city = getCityById(cityId);
+
+  if (!city) {
+    console.warn(
+      `存在しない都市IDです: ${cityId}`
+    );
+    return;
+  }
+
+  // ① 現在選択中の都市を更新
+  selectedCity = city;
+
+  // ② 選択状態をブラウザに保存
+  saveSelectedCityId(city.id);
+
+  // ③ 前の都市の表示データをクリア
+  latestRows = [];
+  latestFetchedAt = null;
+
+  // ④ 現在のグラフを破棄
+  if (weatherChart) {
+    weatherChart.destroy();
+    weatherChart = null;
+  }
+
+  // ⑤ UIを一旦初期状態へ
+  $("csvButton").disabled = true;
+
+  $("updatedAt").textContent =
+    "最終データ取得：読み込み中...";
+
+  $("status").className = "status";
+  $("status").textContent = "";
+
+  // ⑥ 選択した都市のキャッシュ確認
+  //    → なければAPI取得
+  await initializeWeatherForSelectedCity();
+}
+
+
+
+
 function buildApiUrl() {
   const params = new URLSearchParams({
-    latitude: String(CONFIG.latitude),
-    longitude: String(CONFIG.longitude),
+    latitude:
+      String(
+        selectedCity.latitude
+      ),
+    longitude:
+      String(
+        selectedCity.longitude
+      ),
     timezone: CONFIG.timezone,
     past_days: String(CONFIG.pastDays),
     forecast_days: String(CONFIG.forecastDays),
@@ -705,30 +846,98 @@ function renderRainLegend() {
   right.appendChild(thunder);
 }
 
-function saveCache(rows, fetchedAt) {
+
+
+
+
+
+function getWeatherCacheKey() {
+  return (
+    `${CONFIG.cacheKeyPrefix}_` +
+    selectedCity.id
+  );
+}
+
+
+function saveCache(
+  rows,
+  fetchedAt
+) {
   try {
     const payload = {
-      version: 4.3,
-      fetchedAt: fetchedAt.toISOString(),
+      version: 5,
+      cityId:
+        selectedCity.id,
+
+      fetchedAt:
+        fetchedAt.toISOString(),
+
       rows,
     };
-    localStorage.setItem(CONFIG.cacheKey, JSON.stringify(payload));
+
+    localStorage.setItem(
+      getWeatherCacheKey(),
+      JSON.stringify(payload)
+    );
+
   } catch (err) {
-    console.warn("キャッシュ保存に失敗しました。", err);
+    console.warn(
+      "キャッシュ保存に失敗しました。",
+      err
+    );
   }
 }
 
 function loadCache() {
   try {
-    const raw = localStorage.getItem(CONFIG.cacheKey);
-    if (!raw) return null;
-    const payload = JSON.parse(raw);
-    if (!payload || !Array.isArray(payload.rows) || !payload.fetchedAt) return null;
-    const fetchedAt = new Date(payload.fetchedAt);
-    if (Number.isNaN(fetchedAt.getTime())) return null;
-    return { rows: payload.rows, fetchedAt };
+    const raw =
+      localStorage.getItem(
+        getWeatherCacheKey()
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const payload =
+      JSON.parse(raw);
+
+    if (
+      !payload ||
+      !Array.isArray(
+        payload.rows
+      ) ||
+      !payload.fetchedAt
+    ) {
+      return null;
+    }
+
+    const fetchedAt =
+      new Date(
+        payload.fetchedAt
+      );
+
+    if (
+      Number.isNaN(
+        fetchedAt.getTime()
+      )
+    ) {
+      return null;
+    }
+
+    return {
+      rows:
+        payload.rows,
+
+      fetchedAt,
+    };
+
   } catch (err) {
-    console.warn("キャッシュ読込に失敗しました。", err);
+    console.warn(
+      "キャッシュ読込に失敗しました。",
+      err
+    );
+
     return null;
   }
 }
@@ -768,49 +977,92 @@ async function fetchWeather({ manual = false } = {}) {
   }
 }
 
-async function initializeData() {
-  const cached = loadCache();
-  let needsWeatherRefresh = true;
 
-  // 気温グラフのキャッシュを優先して描画
+
+
+
+
+
+
+
+async function initializeWeatherForSelectedCity() {
+  const cached =
+    loadCache();
+
+  let needsWeatherRefresh =
+    true;
+
   if (cached) {
-    latestRows = cached.rows;
-    latestFetchedAt = cached.fetchedAt;
+    latestRows =
+      cached.rows;
+
+    latestFetchedAt =
+      cached.fetchedAt;
 
     try {
-      renderChart(latestRows, latestFetchedAt);
-      $("csvButton").disabled = false;
+      renderChart(
+        latestRows,
+        latestFetchedAt
+      );
+
+      $("csvButton")
+        .disabled = false;
 
       needsWeatherRefresh =
-        cacheAgeMs(latestFetchedAt) >= CONFIG.cacheMaxAgeMs;
+        cacheAgeMs(
+          latestFetchedAt
+        ) >=
+        CONFIG.cacheMaxAgeMs;
 
-      $("status").className = "status";
-      $("status").textContent = "";
+      $("status").className =
+        "status";
+
+      $("status").textContent =
+        "";
 
     } catch (err) {
-      console.warn("キャッシュの描画に失敗しました。", err);
-      localStorage.removeItem(CONFIG.cacheKey);
+      console.warn(
+        "キャッシュの描画に失敗しました。",
+        err
+      );
+
+      localStorage.removeItem(
+        getWeatherCacheKey()
+      );
 
       latestRows = [];
       latestFetchedAt = null;
     }
   }
 
-  // 必要なら気温データを先に取得
-  if (needsWeatherRefresh) {
-    await fetchWeather({ manual: false });
+  if (
+    needsWeatherRefresh
+  ) {
+    await fetchWeather({
+      manual: false
+    });
   }
+}
 
-  // 気温グラフの描画をブラウザに先に反映させる
-  await new Promise(resolve =>
-    requestAnimationFrame(() =>
-      requestAnimationFrame(resolve)
-    )
+async function initializeData() {
+
+  initializeCitySelector();
+
+  await initializeWeatherForSelectedCity();
+
+  await new Promise(
+    (resolve) =>
+      requestAnimationFrame(
+        () =>
+          requestAnimationFrame(
+            resolve
+          )
+      )
   );
 
-  // 気圧配置の初期化
   initializePressureData();
 }
+
 
 function initializePressureData() {
   const cached = loadPressureCache("current");
@@ -1566,6 +1818,13 @@ $("pressurePreviousButton").addEventListener("click",
                                             () => {showPressureVersion("previous");} );
 $("pressureCurrentButton").addEventListener("click",
                                             () => {showPressureVersion("current");} );
+
+
+$("citySelect").addEventListener("change",
+    async (event) => {
+      await changeCity(event.target.value);
+    }
+  );
 
 //初期から起こす処理を記載
 renderRainLegend();

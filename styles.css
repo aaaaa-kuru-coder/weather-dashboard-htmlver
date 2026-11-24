@@ -460,7 +460,47 @@ h1 {
   .pressure-note {
     font-size: .74rem;
   }
+
+  .city-selector {
+    flex: 1 1 100%;
+  }
+
+  .city-selector select {
+    flex: 1;
+  }
+
+
 }
+
+
+
+.city-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #d8dee8;
+  color: #4b5563;
+}
+
+.city-selector span {
+  font-size: .88rem;
+  white-space: nowrap;
+}
+
+.city-selector select {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: #1f2937;
+  cursor: pointer;
+  outline: none;
+  min-width: 90px;
+}
+
 
 
 

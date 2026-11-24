@@ -21,6 +21,10 @@
         </div>
       </div>
       <div class="controls">
+        <label class="city-selector">
+          <span>エリア</span>
+          <select id="citySelect"></select>
+        </label>
         <button id="refreshButton" class="button primary" type="button">最新データを取得</button>
         <button id="csvButton" class="button secondary" type="button" disabled>CSVを保存</button>
       </div>
@@ -124,6 +128,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
